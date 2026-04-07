@@ -1,14 +1,16 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import TimerCard from '../components/TimerCard'
+import { useEmployees } from '../contexts/EmployeesContext'
 
-const MOCK_EMPLOYEES = [
-  { id: '1', name: '小花', avatarUrl: '', active: true },
-  { id: '2', name: '小玉', avatarUrl: '', active: true },
-  { id: '3', name: '小月', avatarUrl: '', active: true },
-  { id: '4', name: '小星', avatarUrl: '', active: true },
-]
+const SectionTitle = ({ children }) => (
+  <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>
+    {children}
+  </h2>
+)
 
 export default function Timer() {
+  const { employees } = useEmployees()
   const [attending, setAttending] = useState(new Set())
   const [sessionCounts, setSessionCounts] = useState({})
 
@@ -21,48 +23,80 @@ export default function Timer() {
     })
   }
 
-  function handleSessionComplete(employeeId, _durationMinutes) {
+  function handleSessionComplete(employeeId) {
     setSessionCounts(prev => ({ ...prev, [employeeId]: (prev[employeeId] || 0) + 1 }))
   }
 
-  const activeEmployees = MOCK_EMPLOYEES.filter(e => e.active && attending.has(e.id))
+  const activeEmployees = employees.filter(e => e.active && attending.has(e.id))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-up">
+      {/* 頁首 */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'Syne, Inter, sans-serif' }}>點台計時</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>選擇今日出勤員工，開始計時管理。</p>
+      </div>
+
+      {/* 今日出勤 */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">今日出勤</h2>
+        <SectionTitle>今日出勤</SectionTitle>
         <div className="flex flex-wrap gap-2">
-          {MOCK_EMPLOYEES.filter(e => e.active).map(emp => {
+          {employees.filter(e => e.active).map(emp => {
             const isOn = attending.has(emp.id)
             return (
-              <button key={emp.id} onClick={() => toggleAttendance(emp.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  isOn ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                }`}>
-                <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${emp.name}&backgroundColor=374151`}
-                  className="w-5 h-5 rounded-full" alt="" />
+              <motion.button
+                key={emp.id}
+                onClick={() => toggleAttendance(emp.id)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                layout
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                style={isOn ? {
+                  background: 'linear-gradient(90deg, rgba(124,58,237,0.3) 0%, rgba(168,85,247,0.15) 100%)',
+                  border: '1px solid rgba(139,92,246,0.5)',
+                  color: '#a78bfa',
+                  boxShadow: '0 0 14px rgba(139,92,246,0.2)',
+                } : {
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  color: 'var(--text-muted)',
+                }}
+                aria-pressed={isOn}
+              >
+                <img
+                  src={`https://api.dicebear.com/7.x/initials/svg?seed=${emp.name}&backgroundColor=1e1e38`}
+                  className="w-5 h-5 rounded-full"
+                  alt=""
+                />
                 {emp.name}
-                {sessionCounts[emp.id]
-                  ? <span className="text-xs opacity-70">{sessionCounts[emp.id]}節</span>
-                  : null}
-              </button>
+                {sessionCounts[emp.id] ? (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full ml-0.5"
+                    style={{ background: 'rgba(139,92,246,0.25)', color: '#c4b5fd' }}>
+                    {sessionCounts[emp.id]}節
+                  </span>
+                ) : null}
+              </motion.button>
             )
           })}
         </div>
       </section>
 
+      {/* 計時中 */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">計時中</h2>
-        {activeEmployees.length === 0
-          ? <p className="text-gray-600 text-sm">請從上方選擇今日出勤員工</p>
-          : (
-            <div className="flex flex-wrap gap-4">
+        <SectionTitle>計時中</SectionTitle>
+        {activeEmployees.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>請從上方選擇今日出勤員工</p>
+        ) : (
+          <motion.div layout className="flex flex-wrap gap-4">
+            <AnimatePresence>
               {activeEmployees.map(emp => (
                 <TimerCard key={emp.id} employee={emp} onSessionComplete={handleSessionComplete} />
               ))}
-            </div>
-          )}
+            </AnimatePresence>
+          </motion.div>
+        )}
       </section>
     </div>
   )
 }
+

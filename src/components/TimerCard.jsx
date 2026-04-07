@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function pad(n) { return String(n).padStart(2, '0') }
 function fmt(sec) { return `${pad(Math.floor(sec / 60))}:${pad(sec % 60)}` }
 
-function barColor(remaining) {
-  if (remaining <= 0) return 'bg-red-500'
-  if (remaining <= 60) return 'bg-yellow-500'
-  return 'bg-green-500'
+// 顏色系統
+function phaseColor(remaining) {
+  if (remaining <= 0)  return { stroke: '#ef4444', text: '#f87171', shadow: 'rgba(239,68,68,0.4)' }
+  if (remaining <= 60) return { stroke: '#f59e0b', text: '#fbbf24', shadow: 'rgba(245,158,11,0.4)' }
+  return                       { stroke: '#22c55e', text: '#4ade80', shadow: 'rgba(34,197,94,0.35)' }
 }
-function timeColor(remaining) {
-  if (remaining <= 0) return 'text-red-400'
-  if (remaining <= 60) return 'text-yellow-400'
-  return 'text-green-400'
-}
+
+const RING_R = 44
+const RING_CIRC = 2 * Math.PI * RING_R  // ≈ 276.46
 
 export default function TimerCard({ employee, onSessionComplete }) {
   const [total, setTotal] = useState(0)
@@ -21,7 +21,6 @@ export default function TimerCard({ employee, onSessionComplete }) {
 
   const completeRef = useRef(onSessionComplete)
   completeRef.current = onSessionComplete
-
   const remainingRef = useRef(0)
   const durationRef = useRef(0)
   const employeeIdRef = useRef(employee.id)
@@ -29,11 +28,9 @@ export default function TimerCard({ employee, onSessionComplete }) {
 
   useEffect(() => {
     if (!running) return
-
     const id = setInterval(() => {
       remainingRef.current -= 1
       setRemaining(remainingRef.current)
-
       if (remainingRef.current <= 0) {
         clearInterval(id)
         setRunning(false)
@@ -42,7 +39,6 @@ export default function TimerCard({ employee, onSessionComplete }) {
         completeRef.current(employeeIdRef.current, durationRef.current)
       }
     }, 1000)
-
     return () => clearInterval(id)
   }, [running])
 
@@ -55,39 +51,97 @@ export default function TimerCard({ employee, onSessionComplete }) {
     setRunning(true)
   }
 
-  const progress = total > 0 ? ((total - remaining) / total) * 100 : 0
+  const progress = total > 0 ? (total - remaining) / total : 0
+  const dashOffset = RING_CIRC * (1 - (1 - progress))  // amount consumed
+  const color = phaseColor(remaining)
 
   return (
-    <div className="bg-gray-800 rounded-xl p-4 flex flex-col items-center gap-3 w-36">
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.88 }}
+      transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+      className="glass noise-overlay flex flex-col items-center gap-4 p-5 w-44"
+    >
+      {/* 頭像 */}
       <img
-        src={employee.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${employee.name}&backgroundColor=374151`}
+        src={employee.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${employee.name}&backgroundColor=1e1e38`}
         alt={employee.name}
-        className="w-14 h-14 rounded-full object-cover bg-gray-700"
+        className="w-12 h-12 rounded-full object-cover"
+        style={{ border: '2px solid rgba(139,92,246,0.3)' }}
       />
-      <span className="text-sm font-medium">{employee.name}</span>
+      <span className="text-sm font-semibold text-slate-200">{employee.name}</span>
 
-      {running ? (
-        <div className="w-full space-y-1">
-          <div className="w-full bg-gray-700 rounded-full h-1.5">
-            <div
-              className={`h-1.5 rounded-full transition-all duration-1000 ${barColor(remaining)}`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className={`text-center font-mono font-bold text-base ${timeColor(remaining)}`}>
-            {fmt(remaining)}
-          </p>
-        </div>
-      ) : (
-        <div className="flex gap-1.5">
-          {[10, 20, 30].map(min => (
-            <button key={min} onClick={() => start(min)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-2 py-1 rounded transition-colors">
-              {min}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      <AnimatePresence mode="wait">
+        {running ? (
+          <motion.div
+            key="running"
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col items-center gap-2 w-full"
+          >
+            {/* SVG 圓環 */}
+            <div className="relative flex items-center justify-center">
+              <svg width="100" height="100" className="-rotate-90">
+                {/* 軌道 */}
+                <circle
+                  cx="50" cy="50" r={RING_R}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.07)"
+                  strokeWidth="6"
+                />
+                {/* 進度環 */}
+                <circle
+                  cx="50" cy="50" r={RING_R}
+                  fill="none"
+                  stroke={color.stroke}
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={RING_CIRC}
+                  strokeDashoffset={RING_CIRC * progress}
+                  style={{
+                    transition: 'stroke-dashoffset 1s linear, stroke 0.5s ease',
+                    filter: `drop-shadow(0 0 6px ${color.shadow})`,
+                  }}
+                />
+              </svg>
+              {/* 時間 */}
+              <span
+                className="absolute font-mono font-bold text-lg tabular-nums"
+                style={{ color: color.text }}
+              >
+                {fmt(remaining)}
+              </span>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="idle"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="flex gap-1.5 flex-wrap justify-center"
+          >
+            {[10, 20, 30].map(min => (
+              <motion.button
+                key={min}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => start(min)}
+                className="btn-violet px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+                aria-label={`開始 ${min} 分鐘計時`}
+              >
+                {min}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
+

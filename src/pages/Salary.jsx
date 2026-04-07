@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   calcBasePay, calcChampagnePay, calcSessionPay,
   HOURLY_RATE, CHAMPAGNE_BOTTLE_PRICE, CHAMPAGNE_TOWER_PRICE,
@@ -11,9 +12,8 @@ const MOCK_EMPLOYEES = [
   { id: '3', name: '小月' },
   { id: '4', name: '小星' },
 ]
-// Simulated data that will come from Firestore in Task 14
-const MOCK_SESSIONS = { '1': 5, '2': 3 }
-const MOCK_CHAMPAGNE = { '1': { bottles: 3, towers: 1 }, '2': { bottles: 2, towers: 0 } }
+const MOCK_SESSIONS   = { '1': 5, '2': 3 }
+const MOCK_CHAMPAGNE  = { '1': { bottles: 3, towers: 1 }, '2': { bottles: 2, towers: 0 } }
 
 export default function Salary() {
   const [empId, setEmpId] = useState(MOCK_EMPLOYEES[0].id)
@@ -29,9 +29,9 @@ export default function Salary() {
   function calculate() {
     const h = parseFloat(hours) || 0
     const s = sessionOverride !== '' ? parseInt(sessionOverride) : autoSessions
-    const basePay = calcBasePay(h)
+    const basePay      = calcBasePay(h)
     const champagnePay = calcChampagnePay(bottles, towers)
-    const sessionPay = calcSessionPay(s)
+    const sessionPay   = calcSessionPay(s)
     setResult({ h, s, bottles, towers, basePay, champagnePay, sessionPay, total: basePay + champagnePay + sessionPay })
   }
 
@@ -44,73 +44,150 @@ export default function Salary() {
   }
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <h1 className="text-xl font-bold">薪資計算</h1>
-
-      <div className="bg-gray-800 rounded-xl p-4 space-y-4">
-        <div className="flex gap-3">
-          <select value={empId} onChange={e => { setEmpId(e.target.value); setResult(null); setSessionOverride('') }}
-            className="flex-1 bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            {MOCK_EMPLOYEES.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-          </select>
-          <input type="date" defaultValue={new Date().toISOString().split('T')[0]}
-            className="bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-        </div>
-
-        <p className="text-xs text-gray-500">自動帶入：{bottles}支 / {towers}塔 / {autoSessions}節</p>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="space-y-1">
-            <span className="text-xs text-gray-400">上班時數</span>
-            <input type="number" min="0" step="0.5" value={hours}
-              onChange={e => setHours(e.target.value)} placeholder="0"
-              className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs text-gray-400">節數（自動：{autoSessions}）</span>
-            <input type="number" min="0" value={sessionOverride}
-              onChange={e => setSessionOverride(e.target.value)} placeholder={String(autoSessions)}
-              className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </label>
-        </div>
-
-        <button onClick={calculate}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded text-sm transition-colors">
-          計算
-        </button>
+    <div className="space-y-8 max-w-lg animate-fade-up">
+      {/* 頁首 */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'Syne, Inter, sans-serif' }}>薪資計算</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>輸入工時，自動計算當日總薪資與明細。</p>
       </div>
 
-      {result && (
-        <div className="bg-gray-800 rounded-xl p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-400">薪資明細 — {emp.name}</h2>
-          <div className="space-y-2 font-mono">
-            <Row label="保底" formula={`${result.h}時 × ${HOURLY_RATE.toLocaleString()}`} amount={result.basePay} />
-            <Row label="香檳抽成"
-              formula={`(${result.bottles}支×${CHAMPAGNE_BOTTLE_PRICE.toLocaleString()}+${result.towers}塔×${CHAMPAGNE_TOWER_PRICE.toLocaleString()})×${CHAMPAGNE_COMMISSION_RATE * 100}%`}
-              amount={result.champagnePay} />
-            <Row label="點台抽成"
-              formula={`${result.s}節×${SESSION_RATE.toLocaleString()}×${SESSION_COMMISSION_RATE * 100}%`}
-              amount={result.sessionPay} />
-            <div className="border-t border-gray-700 pt-2 flex justify-between font-bold text-sm">
-              <span>當日薪資</span>
-              <span className="text-indigo-400">{result.total.toLocaleString()} Gil</span>
-            </div>
-          </div>
-          <button onClick={save}
-            className="w-full bg-green-700 hover:bg-green-600 text-white py-2 rounded text-sm transition-colors">
-            存檔
-          </button>
+      {/* 輸入區 */}
+      <div className="glass noise-overlay p-5 space-y-5">
+        <div className="flex gap-3 items-stretch">
+          <select
+            value={empId}
+            onChange={e => { setEmpId(e.target.value); setResult(null); setSessionOverride('') }}
+            className="lounge-input flex-1 min-w-0"
+            aria-label="選擇員工"
+          >
+            {MOCK_EMPLOYEES.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+          <input
+            type="date"
+            defaultValue={new Date().toISOString().split('T')[0]}
+            className="lounge-input w-auto"
+            style={{ minWidth: '9rem', flexShrink: 0 }}
+            aria-label="日期"
+          />
         </div>
-      )}
 
-      {history.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">歷史記錄</h2>
-          {history.map((rec, i) => (
-            <div key={i} className="bg-gray-800 rounded-xl px-4 py-3 flex justify-between text-sm">
-              <span className="text-gray-400">{rec.date} · {rec.empName}</span>
-              <span className="text-indigo-400 font-mono">{rec.total.toLocaleString()} Gil</span>
+        {/* 自動帶入提示 */}
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs"
+          style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', color: '#a78bfa' }}>
+          <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          自動帶入：{bottles}支 / {towers}塔 / {autoSessions}節
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="space-y-1.5">
+            <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>上班時數</span>
+            <input
+              type="number" min="0" step="0.5" value={hours}
+              onChange={e => setHours(e.target.value)} placeholder="0"
+              className="lounge-input"
+              aria-label="上班時數"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>節數（自動：{autoSessions}）</span>
+            <input
+              type="number" min="0" value={sessionOverride}
+              onChange={e => setSessionOverride(e.target.value)} placeholder={String(autoSessions)}
+              className="lounge-input"
+              aria-label="節數覆寫"
+            />
+          </label>
+        </div>
+
+        <motion.button
+          onClick={calculate}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="btn-violet w-full py-2.5 rounded-lg text-sm font-semibold text-white"
+          aria-label="計算薪資"
+        >
+          計算薪資
+        </motion.button>
+      </div>
+
+      {/* 薪資結果 */}
+      <AnimatePresence>
+        {result && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+            className="glass noise-overlay p-5 space-y-4"
+          >
+            <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+              薪資明細 — {emp.name}
+            </h2>
+            <div className="space-y-3">
+              <SalaryRow
+                label="保底"
+                formula={`${result.h}時 × ${HOURLY_RATE.toLocaleString()}`}
+                amount={result.basePay}
+              />
+              <SalaryRow
+                label="香檳抽成"
+                formula={`(${result.bottles}支×${CHAMPAGNE_BOTTLE_PRICE.toLocaleString()}+${result.towers}塔×${CHAMPAGNE_TOWER_PRICE.toLocaleString()})×${CHAMPAGNE_COMMISSION_RATE*100}%`}
+                amount={result.champagnePay}
+              />
+              <SalaryRow
+                label="點台抽成"
+                formula={`${result.s}節×${SESSION_RATE.toLocaleString()}×${SESSION_COMMISSION_RATE*100}%`}
+                amount={result.sessionPay}
+              />
+              {/* 合計 */}
+              <div className="pt-3 flex items-center justify-between"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <span className="text-sm font-bold text-slate-100">當日薪資</span>
+                <span className="font-mono font-bold text-lg" style={{ color: '#fbbf24' }}>
+                  {result.total.toLocaleString()} <span className="text-xs opacity-70">Gil</span>
+                </span>
+              </div>
             </div>
+            <motion.button
+              onClick={save}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors"
+              style={{ background: 'linear-gradient(135deg, #15803d, #16a34a)', boxShadow: '0 0 12px rgba(34,197,94,0.25)' }}
+              aria-label="存檔"
+            >
+              存檔記錄
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 歷史記錄 */}
+      {history.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>歷史記錄</h2>
+          {history.map((rec, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className="flex items-center justify-between px-4 py-3 rounded-xl"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {rec.date} <span className="mx-1 opacity-40">·</span>
+                <span className="text-slate-300">{rec.empName}</span>
+              </span>
+              <span className="font-mono font-semibold text-sm" style={{ color: '#fbbf24' }}>
+                {rec.total.toLocaleString()} <span className="text-xs opacity-60">Gil</span>
+              </span>
+            </motion.div>
           ))}
         </section>
       )}
@@ -118,12 +195,12 @@ export default function Salary() {
   )
 }
 
-function Row({ label, formula, amount }) {
+function SalaryRow({ label, formula, amount }) {
   return (
-    <div className="flex justify-between gap-2 text-xs">
-      <span className="text-gray-400 w-16 shrink-0">{label}</span>
-      <span className="text-gray-500 flex-1 truncate">{formula}</span>
-      <span className="text-white shrink-0">{amount.toLocaleString()} Gil</span>
+    <div className="flex justify-between items-baseline gap-2 text-xs">
+      <span className="font-medium shrink-0 w-[4.5rem]" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="flex-1 font-mono text-right" style={{ color: 'rgba(148,163,184,0.5)', wordBreak: 'break-all', lineHeight: 1.6 }}>{formula}</span>
+      <span className="font-mono font-semibold shrink-0 ml-2 text-slate-200">{amount.toLocaleString()} Gil</span>
     </div>
   )
 }
