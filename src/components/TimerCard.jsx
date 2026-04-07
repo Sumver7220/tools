@@ -9,14 +9,15 @@ function barColor(remaining) {
   return 'bg-green-500'
 }
 function timeColor(remaining) {
-  return remaining <= 60 ? 'text-yellow-400' : 'text-green-400'
+  if (remaining <= 0) return 'text-red-400'
+  if (remaining <= 60) return 'text-yellow-400'
+  return 'text-green-400'
 }
 
 export default function TimerCard({ employee, onSessionComplete }) {
   const [total, setTotal] = useState(0)
   const [remaining, setRemaining] = useState(0)
   const [running, setRunning] = useState(false)
-  const [durationMinutes, setDurationMinutes] = useState(0)
 
   const completeRef = useRef(onSessionComplete)
   completeRef.current = onSessionComplete
@@ -49,7 +50,6 @@ export default function TimerCard({ employee, onSessionComplete }) {
     const secs = minutes * 60
     durationRef.current = minutes
     remainingRef.current = secs
-    setDurationMinutes(minutes)
     setTotal(secs)
     setRemaining(secs)
     setRunning(true)
