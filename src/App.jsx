@@ -11,7 +11,7 @@ import { EmployeesProvider } from './contexts/EmployeesContext'
 export default function App() {
   return (
     <EmployeesProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Layout onSignOut={() => {}} />}>
